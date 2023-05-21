@@ -10,7 +10,7 @@ import time
 import os
 import chardet
 from docx import Document
-from cloud_test import Ui_wordcloud
+from cloud import Ui_wordcloud
 
 
 def is_docx_file(path):
@@ -91,8 +91,11 @@ class MyApp(QMainWindow):
     def list_font(self):
         font_list = os.listdir(self.font_path)
         for font in font_list:
-            font_name = self.font_name[font]
-            self.ui.select_font.addItem(font_name)
+            try:
+                font_name = self.font_name[font]
+                self.ui.select_font.addItem(font_name)
+            except KeyError:
+                self.ui.select_font.addItem(font)
         self.ui.select_font.setCurrentText("宋体")
 
     def backcolor_list(self):
