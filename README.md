@@ -1,4 +1,5 @@
 # wordcloud
+支持部分docx、txt文件
 ---
 ## 字体文件可以直接添加到font目录
 ---
