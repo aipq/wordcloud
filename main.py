@@ -13,18 +13,6 @@ from docx import Document
 from new_cloud import Ui_wordcloud
 
 
-def is_docx_file(path):
-    return path.lower().endswith(".docx")
-
-
-def get_keys_from_value(dictionary, value):
-    keys = []
-    for key, val in dictionary.items():
-        if val == value:
-            keys.append(key)
-    return keys[0]
-
-
 class WorkerThread(QThread):
     my_str = pyqtSignal(str)
 
@@ -37,6 +25,9 @@ class WorkerThread(QThread):
         self.stopword = stopword
         self.font = font
         self.backcolor = backcolor
+
+    def is_docx_file(self, path):
+        return path.lower().endswith(".docx")
 
     def read_docx(self):
         try:
@@ -76,8 +67,8 @@ class WorkerThread(QThread):
     def word(self):
         try:
             if self.txt_path != "" and self.wallpaper_path != "" and self.out_path != "":
-                file_type = is_docx_file(self.txt_path)
-                stopword_type = is_docx_file(self.stopword)
+                file_type = self.is_docx_file(self.txt_path)
+                stopword_type = self.is_docx_file(self.stopword)
                 if file_type:
                     text = self.read_docx()
                     if stopword_type:
@@ -96,12 +87,11 @@ class WorkerThread(QThread):
                         self.product_cloud(text, stopword)
             else:
                 self.my_str.emit("error_path")
-
         except:
-            self.my_str.emit("error_type")
+            self.my_str.emit("error_font")
 
     def definl_nostopword(self):
-        if is_docx_file(self.txt_path):
+        if self.is_docx_file(self.txt_path):
             text = self.read_docx()
             stopword = self.is_stopword_txt()
             self.product_cloud(text, stopword)
@@ -111,6 +101,7 @@ class WorkerThread(QThread):
             self.product_cloud(text, stopword)
 
     def product_cloud(self, text, stop_words):
+        print(text)
         words = jieba.cut(text)
         words = [word for word in words if word not in stop_words]
         mask = np.array(Image.open(self.wallpaper_path))
@@ -121,7 +112,7 @@ class WorkerThread(QThread):
         timestamp = time.time()
         formatted_time = time.strftime("%m-%d-%H-%M-%S", time.localtime(timestamp))
         wc.to_file(self.out_path + "/" + formatted_time + ".png")
-
+        self.my_str.emit("success")
     def run(self):
         try:
             if self.stopword != "./default_stopword.txt":
@@ -136,7 +127,6 @@ class WorkerThread(QThread):
                 else:
                     self.stopword = "./null.txt"
                     self.word()
-            self.my_str.emit("ok")
         except:
             self.my_str.emit("error")
 
@@ -200,7 +190,8 @@ class MyApp(QMainWindow):
                 font_name = self.font_name[font]
                 self.ui.select_font.addItem(font_name)
             except KeyError:
-                self.ui.select_font.addItem(font)
+                self.ui.select_font.addItem(font.split(".")[0])
+                self.font_name[font] = font
         self.ui.select_font.setCurrentText("宋体")
 
     def backcolor_list(self):
@@ -212,7 +203,14 @@ class MyApp(QMainWindow):
         self.backcolor = self.ui.select_backbox.currentText()
 
     def selected_font(self):
-        self.font = self.font_path + "/" + get_keys_from_value(self.font_name, self.ui.select_font.currentText())
+        self.font = self.font_path + "/" + self.get_keys_from_value(self.font_name, self.ui.select_font.currentText())
+
+    def get_keys_from_value(self, dictionary, value):
+        keys = []
+        for key, val in dictionary.items():
+            if val == value:
+                keys.append(key)
+        return keys[0]
 
     def input_stopword_path(self):
         self.stopword = self.ui.stopword_path.text()
@@ -258,14 +256,14 @@ class MyApp(QMainWindow):
 
     def worker_finished(self, out_str):
         self.timer.stop()
-        if out_str == "ok":
+        if out_str == "success":
             self.message("提示", "成功！")
         elif out_str == "error":
             self.message("提示", "请检查输入文件!!")
         elif out_str == "error_path":
             self.message("提示", "请输入相应路径!")
-        elif out_str == "error_type":
-            self.message("提示", "请选择正确的文件类型!")
+        elif out_str == "error_font":
+            self.message("提示", "字体不兼容!")
         elif out_str == "error_docx":
             self.message("提示！", "请检查输入文件docx")
 
@@ -285,10 +283,17 @@ class MyApp(QMainWindow):
         self.ui.running_time_label.setText("Running Time: 00:00:00")
         self.selected_font()
         self.select_backcolor()
+
         self.start_time = time.time()
         self.timer.start(1000)
         self.ui.pushButton.setEnabled(False)
         self.ui.switch_stopword.setEnabled(False)
+        print(self.stopword)
+        print(self.font)
+        print(self.backcolor)
+        print(self.switch_stopword_type)
+        print(self.txt_path)
+        print(self.wallpaper_path)
         self.worker_thread = WorkerThread(txt_path=self.txt_path, wallpaper_path=self.wallpaper_path,
                                           out_path=self.out_path, stopword=self.stopword, font=self.font,
 
