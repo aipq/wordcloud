@@ -88,7 +88,7 @@ class WorkerThread(QThread):
             else:
                 self.my_str.emit("error_path")
         except:
-            self.my_str.emit("error_font")
+            self.my_str.emit("error_type")
 
     def definl_nostopword(self):
         if self.is_docx_file(self.txt_path):
@@ -101,18 +101,21 @@ class WorkerThread(QThread):
             self.product_cloud(text, stopword)
 
     def product_cloud(self, text, stop_words):
-        print(text)
-        words = jieba.cut(text)
-        words = [word for word in words if word not in stop_words]
-        mask = np.array(Image.open(self.wallpaper_path))
-        color_func = ImageColorGenerator(mask)
-        wc = WordCloud(font_path=self.font, background_color=self.backcolor, max_words=2000, mask=mask,
-                       color_func=color_func)
-        wc.generate(' '.join(words))
-        timestamp = time.time()
-        formatted_time = time.strftime("%m-%d-%H-%M-%S", time.localtime(timestamp))
-        wc.to_file(self.out_path + "/" + formatted_time + ".png")
-        self.my_str.emit("success")
+        try:
+            words = jieba.cut(text)
+            words = [word for word in words if word not in stop_words]
+            mask = np.array(Image.open(self.wallpaper_path))
+            color_func = ImageColorGenerator(mask)
+            wc = WordCloud(font_path=self.font, background_color=self.backcolor, max_words=2000, mask=mask,
+                           color_func=color_func)
+            wc.generate(' '.join(words))
+            timestamp = time.time()
+            formatted_time = time.strftime("%m-%d-%H-%M-%S", time.localtime(timestamp))
+            wc.to_file(self.out_path + "/" + formatted_time + ".png")
+            self.my_str.emit("success")
+        except:
+            self.my_str.emit("error_font")
+
     def run(self):
         try:
             if self.stopword != "./default_stopword.txt":
@@ -191,7 +194,7 @@ class MyApp(QMainWindow):
                 self.ui.select_font.addItem(font_name)
             except KeyError:
                 self.ui.select_font.addItem(font.split(".")[0])
-                self.font_name[font] = font
+                self.font_name[font] = font.split(".")[0]
         self.ui.select_font.setCurrentText("宋体")
 
     def backcolor_list(self):
@@ -266,6 +269,8 @@ class MyApp(QMainWindow):
             self.message("提示", "字体不兼容!")
         elif out_str == "error_docx":
             self.message("提示！", "请检查输入文件docx")
+        elif out_str == "error_tpye":
+            self.message("提示！", "请检查输入文件类型")
 
     def message_box_clicked(self):
         self.ui.pushButton.setEnabled(True)
@@ -288,12 +293,6 @@ class MyApp(QMainWindow):
         self.timer.start(1000)
         self.ui.pushButton.setEnabled(False)
         self.ui.switch_stopword.setEnabled(False)
-        print(self.stopword)
-        print(self.font)
-        print(self.backcolor)
-        print(self.switch_stopword_type)
-        print(self.txt_path)
-        print(self.wallpaper_path)
         self.worker_thread = WorkerThread(txt_path=self.txt_path, wallpaper_path=self.wallpaper_path,
                                           out_path=self.out_path, stopword=self.stopword, font=self.font,
 
